@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        const token =
+            localStorage.getItem("token");
+
+        if (!token) {
+            window.location.href =
+                "/login.html";
+        }
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>Neon Strike — HTML5 2D Shooter</title>
+    <style>
+        :root {
+            color-scheme: dark;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #070b16;
+            font-family: system-ui, -apple-system, Segoe UI, sans-serif;
+        }
+
+        body {
+            display: grid;
+            place-items: center;
+        }
+
+        #game-wrap {
+            position: relative;
+            width: 100vw;
+            height: 100dvh;
+            max-width: 1100px;
+            max-height: 760px;
+            overflow: hidden;
+            background: #080d1c;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #hud {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .panel {
+            color: #e8f3ff;
+            background: rgba(8,15,32,.78);
+            border: 1px solid rgba(92,225,255,.25);
+            border-radius: 12px;
+            padding: 8px 12px;
+            box-shadow: 0 0 22px #00d9ff12;
+            backdrop-filter: blur(8px);
+            font-size: 13px;
+        }
+
+        .stat {
+            font-weight: 800;
+            font-size: 17px;
+            letter-spacing: .4px;
+        }
+
+        #health-outer {
+            width: 118px;
+            height: 7px;
+            margin-top: 5px;
+            border-radius: 9px;
+            background: #283247;
+            overflow: hidden;
+        }
+
+        #health {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg,#31f5b1,#9cff69);
+            transition: width .15s;
+        }
+
+        #overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 22px;
+            background: radial-gradient(ellipse at center,rgba(10,24,48,.72),rgba(3,6,15,.93));
+            color: white;
+            text-align: center;
+        }
+
+            #overlay.hidden {
+                display: none;
+            }
+
+        .modal {
+            max-width: 420px;
+        }
+
+        h1 {
+            margin: 0 0 8px;
+            font-size: clamp(32px,8vw,54px);
+            line-height: 1;
+            letter-spacing: -2px;
+        }
+
+            h1 span {
+                color: #52e7ff;
+                text-shadow: 0 0 25px #00c8ff66;
+            }
+
+        p {
+            color: #b7c6dc;
+            line-height: 1.55;
+            margin: 12px 0 20px;
+        }
+
+        button {
+            border: 0;
+            border-radius: 12px;
+            padding: 13px 24px;
+            background: linear-gradient(135deg,#51e7ff,#7b7bff);
+            color: #06101d;
+            font-weight: 900;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 8px 28px #36dfff30;
+        }
+
+            button:active {
+                transform: scale(.97);
+            }
+
+        #mobile-controls {
+            position: absolute;
+            bottom: 18px;
+            left: 16px;
+            right: 16px;
+            display: none;
+            justify-content: space-between;
+            align-items: end;
+            pointer-events: none;
+        }
+
+        .pad, .fire {
+            pointer-events: auto;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        .pad {
+            display: grid;
+            grid-template-columns: 48px 48px 48px;
+            grid-template-rows: 48px 48px;
+            gap: 5px;
+        }
+
+        .ctl {
+            display: grid;
+            place-items: center;
+            border: 1px solid #8beaff70;
+            border-radius: 13px;
+            background: #10243bcc;
+            color: #eafaff;
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .up {
+            grid-column: 2;
+        }
+
+        .left {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        .down {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        .right {
+            grid-column: 3;
+            grid-row: 2;
+        }
+
+        .fire {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: #ff4e79d9;
+            border: 2px solid #ffabc0;
+            color: white;
+            font-size: 13px;
+            font-weight: 900;
+            box-shadow: 0 0 24px #ff386b55;
+        }
+
+        #hint {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: #8fa2bf;
+            pointer-events: none;
+        }
+
+        #menu-tools {
+            position: absolute;
+            top: 76px;
+            right: 12px;
+            display: flex;
+            gap: 7px;
+            z-index: 3;
+        }
+
+        .small-btn {
+            padding: 9px 11px;
+            border: 1px solid #65eaff55;
+            background: #101c33eF;
+            color: #eafaff;
+            box-shadow: none;
+            font-size: 12px;
+            border-radius: 10px;
+        }
+
+        #coin-pill {
+            position: absolute;
+            top: 76px;
+            left: 12px;
+            z-index: 3;
+            color: #ffe58c;
+            border: 1px solid #ffd76b55;
+            background: #17182ceF;
+            border-radius: 10px;
+            padding: 8px 11px;
+            font-weight: 900;
+            font-size: 13px;
+        }
+
+        #shop-panel {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            display: none;
+            overflow: auto;
+            background: rgba(4,8,19,.96);
+            color: #edf7ff;
+            padding: 22px;
+        }
+
+            #shop-panel.open {
+                display: block;
+            }
+
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            max-width: 760px;
+            margin: 0 auto 18px;
+        }
+
+            .panel-head h2 {
+                margin: 0;
+                font-size: 25px;
+            }
+
+        .coin-note {
+            color: #ffe58c;
+            font-weight: 800;
+        }
+
+        #avatar-grid, #achievement-list {
+            max-width: 760px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fit,minmax(145px,1fr));
+            gap: 12px;
+        }
+
+        .avatar-card, .achievement-card {
+            border: 1px solid #35465f;
+            background: linear-gradient(145deg,#101b30,#0a1020);
+            border-radius: 15px;
+            padding: 14px;
+            min-width: 0;
+        }
+
+        .avatar-preview {
+            height: 76px;
+            display: grid;
+            place-items: center;
+            font-size: 43px;
+            border-radius: 11px;
+            background: radial-gradient(circle,#1a4560,#0b1428 72%);
+            margin-bottom: 10px;
+        }
+
+        .avatar-card h3, .achievement-card h3 {
+            margin: 4px 0;
+            font-size: 15px;
+        }
+
+        .avatar-card p, .achievement-card p {
+            font-size: 12px;
+            color: #9eb1ca;
+            margin: 5px 0 12px;
+        }
+
+        .avatar-card button {
+            width: 100%;
+            padding: 9px 6px;
+            font-size: 12px;
+        }
+
+        .avatar-card .owned {
+            background: #1b3040;
+            color: #91f4d3;
+            box-shadow: none;
+        }
+
+        .achievement-card {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .achievement-icon {
+            font-size: 27px;
+        }
+
+        .achievement-card.unlocked {
+            border-color: #51e7ff88;
+        }
+
+        .achievement-card .status {
+            font-size: 10px;
+            color: #6fe9c2;
+            font-weight: 900;
+            letter-spacing: .6px;
+        }
+
+        #toast {
+            position: absolute;
+            z-index: 7;
+            bottom: 54px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            background: #13243a;
+            border: 1px solid #62eaff66;
+            color: #effcff;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        @media (pointer:coarse) {
+            #menu-tools {
+                top: 118px;
+            }
+
+            #coin-pill {
+                top: 118px;
+            }
+        }
+
+        @media (max-width:520px) {
+            #menu-tools {
+                left: 12px;
+                right: 12px;
+                justify-content: flex-end;
+            }
+
+            .small-btn {
+                padding: 8px 9px;
+            }
+
+            #coin-pill {
+                top: 118px;
+            }
+        }
+
+        @media (pointer:coarse) {
+            #mobile-controls {
+                display: flex;
+            }
+
+            #hint {
+                bottom: 158px;
+            }
+        }
+
+        @media (max-height:500px) {
+            #mobile-controls {
+                bottom: 8px;
+                transform: scale(.78);
+                transform-origin: bottom;
+            }
+
+            #hud {
+                top: 6px;
+            }
+
+            .panel {
+                padding: 5px 8px;
+            }
+
+            #hint {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-wrap">
+        <canvas id="game" aria-label="Neon Strike 2D shooter"></canvas>
+        <div id="hud">
+            <div class="panel">SCORE <div class="stat" id="score">0</div></div>
+            <div class="panel">WAVE <div class="stat" id="wave">1</div></div>
+            <div class="panel">HULL <div id="health-outer"><div id="health"></div></div></div>
+        </div>
+        <div id="coin-pill">🪙 <span id="coins">0</span> NeonCoin</div>
+        <div id="menu-tools">
+            <button class="small-btn" id="shop-btn">🛍 AVATARS</button>
+            <button class="small-btn" id="achievements-btn">🏆 ACHIEVEMENTS</button>
+        </div>
+        <div id="toast"></div>
+        <div id="shop-panel">
+            <div class="panel-head"><div><h2 id="panel-title">Avatar Shop</h2><div class="coin-note">🪙 <span id="shop-coins">0</span> NeonCoin</div></div><button class="small-btn" id="close-panel">✕ CLOSE</button></div>
+            <div id="avatar-grid"></div>
+            <div id="achievement-list" style="display:none"></div>
+        </div>
+        <div id="hint">Move: WASD / Arrow keys · Aim: Mouse · Shoot: Click / Space · On mobile: use controls</div>
+        <div id="mobile-controls">
+            <div class="pad">
+                <div class="ctl up" data-key="ArrowUp">▲</div>
+                <div class="ctl left" data-key="ArrowLeft">◀</div>
+                <div class="ctl down" data-key="ArrowDown">▼</div>
+                <div class="ctl right" data-key="ArrowRight">▶</div>
+            </div>
+            <button class="fire" id="fire-btn">FIRE</button>
+        </div>
+        <div id="overlay">
+            <div class="modal">
+                <h1>NEON <span>STRIKE</span></h1>
+                <p>Survive the enemy swarm. Move, aim, and blast your way through increasingly intense waves.</p>
+                <p><b>Desktop:</b> WASD / arrows to move, mouse to aim, click or Space to fire.<br><b>Mobile:</b> use the direction pad and hold FIRE.</p>
+                <button id="start-btn">START GAME</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        (() => {
+
+            window.onload = async function () {
+
+                await loadProfile();
+            };
+
+            async function getProfile() {
+
+                const token = localStorage.getItem("token");
+
+                const response = await fetch("/api/player/profile", {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+
+                if (response.status === 401) {
+
+                    localStorage.removeItem("token");
+
+                    window.location.href = "/login.html";
+
+                    return null;
+                }
+
+                return await response.json();
+            }
+
+            async function loadProfile() {
+
+                const profile = await getProfile();
+
+                if (!profile) {
+                    return;
+                }
+
+                coins = profile.coins;
+                bestScore = profile.bestScore;
+
+                updateCoinDisplays();
+
+                console.log("Profile loaded", profile);
+            }
+
+            const canvas = document.getElementById('game');
+            const ctx = canvas.getContext('2d');
+            const wrap = document.getElementById('game-wrap');
+            const overlay = document.getElementById('overlay');
+            const startBtn = document.getElementById('start-btn');
+            const scoreEl = document.getElementById('score');
+            const waveEl = document.getElementById('wave');
+            const healthEl = document.getElementById('health');
+            const fireBtn = document.getElementById('fire-btn');
+            const shopPanel = document.getElementById('shop-panel');
+            const avatarGrid = document.getElementById('avatar-grid');
+            const achievementList = document.getElementById('achievement-list');
+            const toast = document.getElementById('toast');
+
+            let W = 0, H = 0, dpr = 1, running = false, gameOver = false, last = 0, spawnTimer = 0, score = 0, wave = 1;
+            // Progress is saved locally in this browser.
+            const avatars = [
+                { id: 'default', name: 'Rookie', emoji: '🚀', price: 0, color: '#60efff', desc: 'The classic neon pilot.' },
+                { id: 'mint', name: 'Mint Pulse', emoji: '🛸', price: 100, color: '#65ffc4', desc: 'A fresh mint-green glow.' },
+                { id: 'sunset', name: 'Sunset Nova', emoji: '☄️', price: 180, color: '#ff9b65', desc: 'A warm cosmic trail.' },
+                { id: 'violet', name: 'Violet Phantom', emoji: '👾', price: 280, color: '#c18aff', desc: 'A mysterious purple look.' },
+                { id: 'gold', name: 'Gold Legend', emoji: '🌟', price: 450, color: '#ffd76b', desc: 'A shining elite avatar.' },
+                { id: 'heart', name: 'Pixel Heart', emoji: '💖', price: 350, color: '#ff70b5', desc: 'Pink energy, big style.' }
+            ];
+            const achievementDefs = [
+                { id: 'first_blood', icon: '🎯', name: 'First Contact', desc: 'Defeat your first enemy.', goal: 'Defeat 1 enemy' },
+                { id: 'score_100', icon: '💯', name: 'Century Club', desc: 'Earn 100 points in one run.', goal: 'Score 100' },
+                { id: 'score_500', icon: '💎', name: 'Neon Collector', desc: 'Earn 500 points in one run.', goal: 'Score 500' },
+                { id: 'wave_3', icon: '🌊', name: 'Wave Rider', desc: 'Reach wave 3.', goal: 'Reach wave 3' },
+                { id: 'survivor', icon: '🛡️', name: 'Still Standing', desc: 'Finish a run with at least 50 score.', goal: 'Score 50+' }
+            ];
+            //let coins = Number(localStorage.getItem('neonStrikeCoins') || 0);
+            let coins = 0;
+            let ownedAvatars = JSON.parse(localStorage.getItem('neonStrikeOwned') || '["default"]');
+            let selectedAvatar = localStorage.getItem('neonStrikeAvatar') || 'default';
+            let unlockedAchievements = JSON.parse(localStorage.getItem('neonStrikeAchievements') || '[]');
+            let runStats = { kills: 0, bestScore: 0, reachedWave: 1 };
+            let toastTimer;
+            const keys = Object.create(null);
+            const bullets = [], enemies = [], particles = [], stars = [];
+            const pointer = { x: 0, y: 0, down: false };
+            let mobileFire = false;
+            const player = { x: 0, y: 0, r: 14, speed: 255, hp: 100, maxHp: 100, angle: 0, cooldown: 0, invuln: 0 };
+
+            function saveProgress() {
+                localStorage.setItem('neonStrikeCoins', String(coins));
+                localStorage.setItem('neonStrikeOwned', JSON.stringify(ownedAvatars));
+                localStorage.setItem('neonStrikeAvatar', selectedAvatar);
+                localStorage.setItem('neonStrikeAchievements', JSON.stringify(unlockedAchievements));
+                updateCoinDisplays();
+            }
+            function updateCoinDisplays() {
+                document.getElementById('coins').textContent = coins;
+                document.getElementById('shop-coins').textContent = coins;
+            }
+            function notify(message) {
+                toast.textContent = message; toast.style.display = 'block';
+                clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.style.display = 'none', 2200);
+            }
+            function checkAchievements() {
+                const checks = {
+                    first_blood: runStats.kills >= 1,
+                    score_100: score >= 100,
+                    score_500: score >= 500,
+                    wave_3: wave >= 3,
+                    survivor: gameOver && score >= 50
+                };
+                for (const a of achievementDefs) {
+                    if (checks[a.id] && !unlockedAchievements.includes(a.id)) {
+                        unlockedAchievements.push(a.id);
+                        coins += a.id === 'score_500' ? 75 : a.id === 'wave_3' ? 40 : 25;
+                        notify('Achievement unlocked: ' + a.name + '  ·  bonus NeonCoin!');
+                    }
+                }
+                saveProgress();
+            }
+            function renderShop() {
+                document.getElementById('panel-title').textContent = 'Avatar Shop';
+                avatarGrid.style.display = 'grid'; achievementList.style.display = 'none';
+                avatarGrid.innerHTML = '';
+                for (const a of avatars) {
+                    const owned = ownedAvatars.includes(a.id), selected = selectedAvatar === a.id;
+                    const card = document.createElement('div'); card.className = 'avatar-card';
+                    card.innerHTML = `<div class="avatar-preview" style="color:${a.color}">${a.emoji}</div><h3>${a.name}</h3><p>${a.desc}</p><p>🪙 ${a.price} NeonCoin</p>`;
+                    const btn = document.createElement('button');
+                    btn.textContent = selected ? 'EQUIPPED' : owned ? 'EQUIP' : `BUY · ${a.price}`;
+                    if (owned) btn.classList.add('owned');
+                    btn.disabled = selected || (!owned && coins < a.price);
+                    btn.addEventListener('click', () => {
+                        if (!owned) {
+                            if (coins < a.price) { notify('Not enough NeonCoin yet!'); return; }
+                            coins -= a.price; ownedAvatars.push(a.id);
+                        }
+                        selectedAvatar = a.id; saveProgress(); renderShop(); notify(a.name + ' equipped!');
+                    });
+                    card.appendChild(btn); avatarGrid.appendChild(card);
+                }
+                updateCoinDisplays();
+            }
+            function renderAchievements() {
+                document.getElementById('panel-title').textContent = 'Achievements';
+                avatarGrid.style.display = 'none'; achievementList.style.display = 'grid'; achievementList.innerHTML = '';
+                for (const a of achievementDefs) {
+                    const unlocked = unlockedAchievements.includes(a.id);
+                    const card = document.createElement('div'); card.className = 'achievement-card' + (unlocked ? ' unlocked' : '');
+                    card.innerHTML = `<div class="achievement-icon">${a.icon}</div><div><h3>${a.name}</h3><p>${a.desc}</p><div class="status">${unlocked ? '✓ UNLOCKED · BONUS CLAIMED' : '🔒 LOCKED'} </div></div>`;
+                    achievementList.appendChild(card);
+                }
+            }
+            function openPanel(which) {
+                if (running) { running = false; }
+                shopPanel.classList.add('open');
+                if (which === 'shop') renderShop(); else renderAchievements();
+            }
+            document.getElementById('shop-btn').addEventListener('click', () => openPanel('shop'));
+            document.getElementById('achievements-btn').addEventListener('click', () => openPanel('achievements'));
+            document.getElementById('close-panel').addEventListener('click', () => {
+                shopPanel.classList.remove('open');
+                if (!gameOver && overlay.classList.contains('hidden')) { running = true; last = performance.now(); requestAnimationFrame(loop); }
+            });
+            updateCoinDisplays();
+
+            function resize() {
+                const rect = wrap.getBoundingClientRect();
+                W = rect.width; H = rect.height; dpr = Math.min(window.devicePixelRatio || 1, 2);
+                canvas.width = Math.floor(W * dpr); canvas.height = Math.floor(H * dpr);
+                ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+                if (!running) { player.x = W / 2; player.y = H / 2; }
+                stars.length = 0;
+                for (let i = 0; i < Math.floor(W * H / 6000); i++) stars.push({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.6 + .3, a: Math.random() * .5 + .15 });
+            }
+            window.addEventListener('resize', resize);
+            resize();
+
+            function reset() {
+                score = 0; wave = 1; spawnTimer = .5; bullets.length = 0; enemies.length = 0; particles.length = 0;
+                runStats = { kills: 0, bestScore: 0, reachedWave: 1 };
+                player.x = W / 2; player.y = H / 2; player.hp = 100; player.cooldown = 0; player.invuln = 1.2;
+                scoreEl.textContent = '0'; waveEl.textContent = '1'; healthEl.style.width = '100%';
+                gameOver = false; running = true; overlay.classList.add('hidden'); last = performance.now();
+                requestAnimationFrame(loop);
+            }
+            function endGame() {
+                running = false; gameOver = true;
+                coins += Math.floor(score / 10);
+                saveProgress();
+                checkAchievements();
+                overlay.innerHTML = `<div class="modal"><h1>GAME <span>OVER</span></h1><p>Your score: <b>${score}</b><br>You reached wave <b>${wave}</b>.<br>Earned NeonCoin: <b>+${Math.floor(score / 10)}</b></p><button id="restart-btn">PLAY AGAIN</button>`;
+                overlay.classList.remove('hidden');
+                document.getElementById('restart-btn').addEventListener('click', reset);
+            }
+            startBtn.addEventListener('click', reset);
+
+            function posFromEvent(e) {
+                const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top };
+            }
+            canvas.addEventListener('pointermove', e => { const p = posFromEvent(e); pointer.x = p.x; pointer.y = p.y; });
+            canvas.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') { pointer.down = true; const p = posFromEvent(e); pointer.x = p.x; pointer.y = p.y; } });
+            window.addEventListener('pointerup', () => pointer.down = false);
+            window.addEventListener('keydown', e => {
+                if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+                keys[e.key.toLowerCase()] = true;
+            });
+            window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+            document.querySelectorAll('[data-key]').forEach(el => {
+                const k = el.dataset.key.toLowerCase();
+                const down = e => { e.preventDefault(); keys[k] = true; };
+                const up = e => { e.preventDefault(); keys[k] = false; };
+                el.addEventListener('pointerdown', down); el.addEventListener('pointerup', up);
+                el.addEventListener('pointerleave', up); el.addEventListener('pointercancel', up);
+            });
+            fireBtn.addEventListener('pointerdown', e => { e.preventDefault(); mobileFire = true; });
+            ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => fireBtn.addEventListener(ev, e => { e.preventDefault(); mobileFire = false; }));
+
+            function burst(x, y, color, count = 10) {
+                for (let i = 0; i < count; i++) {
+                    const a = Math.random() * Math.PI * 2, s = 40 + Math.random() * 210;
+                    particles.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: .25 + Math.random() * .45, max: .7, r: 1 + Math.random() * 3, color });
+                }
+            }
+            function spawnEnemy() {
+                const side = Math.floor(Math.random() * 4); let x, y;
+                if (side === 0) { x = Math.random() * W; y = -25; } else if (side === 1) { x = W + 25; y = Math.random() * H; }
+                else if (side === 2) { x = Math.random() * W; y = H + 25; } else { x = -25; y = Math.random() * H; }
+                const tough = Math.random() < Math.min(.08 + wave * .012, .28);
+                enemies.push({ x, y, r: tough ? 17 : 12, hp: tough ? 3 : 1, speed: (tough ? 45 : 65) + Math.random() * 28 + wave * 3, color: tough ? '#ffb547' : '#ff4e79', damage: tough ? 22 : 14 });
+            }
+            function shoot() {
+                const a = player.angle;
+                bullets.push({ x: player.x + Math.cos(a) * 19, y: player.y + Math.sin(a) * 19, vx: Math.cos(a) * 590, vy: Math.sin(a) * 590, r: 4, life: 1.15 });
+                player.cooldown = .16;
+                burst(player.x + Math.cos(a) * 20, player.y + Math.sin(a) * 20, '#76f4ff', 3);
+            }
+            function update(dt) {
+                let dx = 0, dy = 0;
+                if (keys['w'] || keys['arrowup']) dy--; if (keys['s'] || keys['arrowdown']) dy++;
+                if (keys['a'] || keys['arrowleft']) dx--; if (keys['d'] || keys['arrowright']) dx++;
+                if (dx && dy) { dx *= .7071; dy *= .7071; }
+                player.x = Math.max(player.r, Math.min(W - player.r, player.x + dx * player.speed * dt));
+                player.y = Math.max(player.r, Math.min(H - player.r, player.y + dy * player.speed * dt));
+                if (pointer.x || pointer.y) player.angle = Math.atan2(pointer.y - player.y, pointer.x - player.x);
+                player.cooldown -= dt; player.invuln -= dt;
+                if ((pointer.down || keys[' '] || mobileFire) && player.cooldown <= 0) shoot();
+
+                spawnTimer -= dt;
+                if (spawnTimer <= 0) { spawnEnemy(); spawnTimer = Math.max(.22, 1.05 - wave * .055) * (.65 + Math.random() * .6); }
+                if (score >= wave * 140) { wave++; waveEl.textContent = wave; runStats.reachedWave = wave; burst(W / 2, 45, '#59e9ff', 22); checkAchievements(); }
+
+                for (let i = bullets.length - 1; i >= 0; i--) {
+                    const b = bullets[i]; b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+                    if (b.life <= 0 || b.x < -20 || b.x > W + 20 || b.y < -20 || b.y > H + 20) bullets.splice(i, 1);
+                }
+                for (let i = enemies.length - 1; i >= 0; i--) {
+                    const e = enemies[i], a = Math.atan2(player.y - e.y, player.x - e.x);
+                    e.x += Math.cos(a) * e.speed * dt; e.y += Math.sin(a) * e.speed * dt;
+                    const pd = Math.hypot(player.x - e.x, player.y - e.y);
+                    if (pd < player.r + e.r) {
+                        if (player.invuln <= 0) { player.hp -= e.damage; player.invuln = .55; healthEl.style.width = Math.max(0, player.hp) + '%'; burst(player.x, player.y, '#ff5577', 14); }
+                        burst(e.x, e.y, e.color, 8); enemies.splice(i, 1); if (player.hp <= 0) { endGame(); return; } continue;
+                    }
+                    for (let j = bullets.length - 1; j >= 0; j--) {
+                        const b = bullets[j];
+                        if (Math.hypot(b.x - e.x, b.y - e.y) < b.r + e.r) {
+                            bullets.splice(j, 1); e.hp--; burst(b.x, b.y, e.color, 4);
+                            if (e.hp <= 0) { score += e.color === '#ffb547' ? 25 : 10; runStats.kills++; scoreEl.textContent = score; burst(e.x, e.y, e.color, 12); enemies.splice(i, 1); checkAchievements(); }
+                            break;
+                        }
+                    }
+                }
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= Math.pow(.06, dt); p.vy *= Math.pow(.06, dt); p.life -= dt;
+                    if (p.life <= 0) particles.splice(i, 1);
+                }
+            }
+            function draw() {
+                ctx.clearRect(0, 0, W, H);
+                const bg = ctx.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#0b1730'); bg.addColorStop(1, '#080a18'); ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+                ctx.strokeStyle = 'rgba(73,143,201,.08)'; ctx.lineWidth = 1;
+                const grid = 42; for (let x = 0; x < W; x += grid) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+                for (let y = 0; y < H; y += grid) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+                for (const s of stars) { ctx.globalAlpha = s.a; ctx.fillStyle = '#9cecff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1;
+                for (const b of bullets) { ctx.shadowBlur = 13; ctx.shadowColor = '#53f4ff'; ctx.fillStyle = '#c8fcff'; ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fill(); } ctx.shadowBlur = 0;
+                for (const e of enemies) {
+                    ctx.shadowBlur = 17; ctx.shadowColor = e.color; ctx.fillStyle = e.color; ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+                    ctx.fillStyle = '#28162c'; ctx.beginPath(); ctx.arc(e.x + Math.cos(Math.atan2(player.y - e.y, player.x - e.x)) * 4, e.y + Math.sin(Math.atan2(player.y - e.y, player.x - e.x)) * 4, 3, 0, Math.PI * 2); ctx.fill();
+                    if (e.hp > 1) { ctx.fillStyle = '#392b35'; ctx.fillRect(e.x - e.r, e.y - e.r - 7, e.r * 2, 3); ctx.fillStyle = '#ffd16b'; ctx.fillRect(e.x - e.r, e.y - e.r - 7, e.r * 2 * (e.hp / 3), 3); }
+                }
+                for (const p of particles) { ctx.globalAlpha = Math.max(0, p.life / .7); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2); ctx.fill(); } ctx.globalAlpha = 1;
+                // Player ship
+                ctx.save(); ctx.translate(player.x, player.y); ctx.rotate(player.angle);
+                if (player.invuln > 0 && Math.floor(performance.now() / 80) % 2 === 0) ctx.globalAlpha = .45;
+                const skin = avatars.find(a => a.id === selectedAvatar) || avatars[0];
+                ctx.shadowBlur = 22; ctx.shadowColor = skin.color; ctx.fillStyle = skin.color; ctx.beginPath(); ctx.moveTo(20, 0); ctx.lineTo(-12, -11); ctx.lineTo(-7, 0); ctx.lineTo(-12, 11); ctx.closePath(); ctx.fill();
+                ctx.shadowBlur = 0; ctx.fillStyle = '#eaffff'; ctx.beginPath(); ctx.arc(0, 0, 4, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = skin.color; ctx.beginPath(); ctx.moveTo(-10, -5); ctx.lineTo(-18, 0); ctx.lineTo(-10, 5); ctx.closePath(); ctx.fill(); ctx.restore();
+                // Aim indicator
+                if (!matchMedia('(pointer: coarse)').matches) { ctx.strokeStyle = 'rgba(111,239,255,.45)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(pointer.x, pointer.y, 8, 0, Math.PI * 2); ctx.stroke(); ctx.beginPath(); ctx.moveTo(pointer.x - 12, pointer.y); ctx.lineTo(pointer.x + 12, pointer.y); ctx.moveTo(pointer.x, pointer.y - 12); ctx.lineTo(pointer.x, pointer.y + 12); ctx.stroke(); }
+            }
+            function loop(now) {
+                if (!running) return;
+                const dt = Math.min((now - last) / 1000, .033); last = now;
+                update(dt); if (running) { draw(); requestAnimationFrame(loop); }
+            }
+            // Draw a decorative background behind the start screen.
+            player.x = W / 2; player.y = H / 2; pointer.x = W * .7; pointer.y = H / 2;
+            draw();
+        })();
+    </script>
+</body>
+</html>

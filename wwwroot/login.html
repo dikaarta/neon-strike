@@ -1,0 +1,68 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+</head>
+<body>
+    <h1>Game Login</h1>
+
+    <div>
+        <input id="username"
+               type="text"
+               placeholder="Username" />
+    </div>
+
+    <br />
+
+    <div>
+        <input id="password"
+               type="password"
+               placeholder="Password" />
+    </div>
+
+    <br />
+
+    <button onclick="login()">
+        Login
+    </button>
+
+    <div id="error"></div>
+
+    <script>
+        async function login() {
+
+            const username =
+                document.getElementById("username").value;
+
+            const password =
+                document.getElementById("password").value;
+
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    username,
+                    password
+                })
+            });
+
+            if (!response.ok) {
+                document.getElementById("error").innerText =
+                    "Invalid username or password.";
+
+                return;
+            }
+
+            const data = await response.json();
+
+            localStorage.setItem(
+                "token",
+                data.token);
+
+            window.location.href = "/";
+        }
+    </script>
+</body>
+</html>
