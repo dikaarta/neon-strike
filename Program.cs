@@ -9,9 +9,17 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var home = Environment.GetEnvironmentVariable("HOME");
+
+var dbPath = string.IsNullOrEmpty(home)
+    ? Path.Combine(builder.Environment.ContentRootPath, "game.db")
+    : Path.Combine(home, "data", "game.db");
+
+Directory.CreateDirectory(
+    Path.GetDirectoryName(dbPath)!);
+
 builder.Services.AddDbContext<GameDbContext>(options =>
-    options.UseSqlite(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite($"Data Source={dbPath}"));
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -72,17 +80,31 @@ var app = builder.Build();
 app.UseSwagger();
 app.UseSwaggerUI();
 
-using (var scope = app.Services.CreateScope())
+using var scope = app.Services.CreateScope();
+
+try
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<GameDbContext>();
+    var dbContext =
+        scope.ServiceProvider.GetRequiredService<GameDbContext>();
+
+    await dbContext.Database.MigrateAsync();
 
     await SeedData.InitializeAsync(dbContext);
+}
+catch (Exception ex)
+{
+    File.WriteAllText(
+            Path.Combine(
+                builder.Environment.ContentRootPath,
+                "startup-error.txt"),
+            ex.ToString());
+    throw;
 }
 
 // Configure the HTTP request pipeline.
 //if (app.Environment.IsDevelopment())
 //{
-    app.MapOpenApi();
+app.MapOpenApi();
 //}
 
 app.UseHttpsRedirection();
